@@ -157,9 +157,9 @@ export const registrationWizard = new Scenes.WizardScene<MyContext>(
         }
 
         const tasksInput = (ctx.message as { text: string }).text.trim();
-        const tasksCount = parseInt(tasksInput, 10);
-        if (isNaN(tasksCount) || tasksCount <= 0) {
-            await ctx.reply("🤔 That doesn't seem like a valid number. Please enter a positive number.");
+        const tasksCount = Number(tasksInput);
+        if (!Number.isFinite(tasksCount) || tasksCount <= 0) {
+            await ctx.reply("🤔 That doesn't seem like a valid number. Please enter a positive number(>0).");
             return;
         }
 
