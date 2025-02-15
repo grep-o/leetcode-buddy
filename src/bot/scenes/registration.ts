@@ -42,6 +42,14 @@ async function checkExit(ctx: MyContext): Promise<boolean> {
     return false;
 }
 
+async function handler<C>(callback: () => Promise<C>) {
+    try {
+        return await callback()
+    } catch (error: unknown) {
+        console.error(`handler`, error)
+    }
+}
+
 // 4. Create the wizard scene using MyContext as the generic argument.
 //    The registration wizard now consists of 6 steps:
 //    Step 1: Ask for the LeetCode username.
@@ -149,25 +157,26 @@ export const registrationWizard = new Scenes.WizardScene<MyContext>(
 
     // Step 5: Ask for the number of tasks per day.
     async (ctx) => {
-        if (await checkExit(ctx)) return;
+        return handler(async () => {
+            if (await checkExit(ctx)) return;
 
-        if (!ctx.message || !("text" in ctx.message)) {
-            await ctx.reply("😕 Please type a number for how many tasks you want to solve each day.");
-            return;
-        }
+            if (!ctx.message || !("text" in ctx.message)) {
+                await ctx.reply("😕 Please type a number for how many tasks you want to solve each day.");
+                return;
+            }
 
-        const tasksInput = (ctx.message as { text: string }).text.trim();
-        const tasksCount = Number(tasksInput);
-        if (!Number.isFinite(tasksCount) || tasksCount <= 0) {
-            await ctx.reply("🤔 That doesn't seem like a valid number. Please enter a positive number(>0).");
-            return;
-        }
+            const tasksInput = (ctx.message as { text: string }).text.trim();
+            const tasksCount = Number(tasksInput);
+            if (!Number.isFinite(tasksCount) || tasksCount <= 0) {
+                await ctx.reply("🤔 That doesn't seem like a valid number. Please enter a positive number(>0).");
+                return;
+            }
 
-        await ctx.reply(`Noted!`);
+            await ctx.reply(`Noted!`);
 
-        // Save the tasks count in our custom state.
-        (ctx.wizard.state as RegistrationWizardState).tasksCount = tasksCount;
-        return ctx.wizard.next();
+            (ctx.wizard.state as RegistrationWizardState).tasksCount = tasksCount;
+            return ctx.wizard.next();
+        })
     },
 
     // Step 6: Finalize registration and confirm schedule.
@@ -221,4 +230,3 @@ export const registrationWizard = new Scenes.WizardScene<MyContext>(
     }
 );
 
-export default registrationWizard;
