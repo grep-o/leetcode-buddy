@@ -42,13 +42,6 @@ async function checkExit(ctx: MyContext): Promise<boolean> {
     return false;
 }
 
-async function handler<C>(callback: () => Promise<C>) {
-    try {
-        return await callback()
-    } catch (error: unknown) {
-        console.error(`handler`, error)
-    }
-}
 
 // 4. Create the wizard scene using MyContext as the generic argument.
 //    The registration wizard now consists of 6 steps:
@@ -155,54 +148,41 @@ export const registrationWizard = new Scenes.WizardScene<MyContext>(
         return ctx.wizard.next();
     },
 
-    // Step 5: Ask for the number of tasks per day.
-    async (ctx) => {
-        return handler(async () => {
-            if (await checkExit(ctx)) return;
-
-            if (!ctx.message || !("text" in ctx.message)) {
-                await ctx.reply("😕 Please type a number for how many tasks you want to solve each day.");
-                return;
-            }
-
-            const tasksInput = (ctx.message as { text: string }).text.trim();
-            const tasksCount = Number(tasksInput);
-            if (!Number.isFinite(tasksCount) || tasksCount <= 0) {
-                await ctx.reply("🤔 That doesn't seem like a valid number. Please enter a positive number(>0).");
-                return;
-            }
-
-            await ctx.reply(`Noted!`);
-
-            (ctx.wizard.state as RegistrationWizardState).tasksCount = tasksCount;
-            return ctx.wizard.next();
-        })
-    },
-
-    // Step 6: Finalize registration and confirm schedule.
+    // Step 5: Ask for the number of tasks per day and finalize registration.
     async (ctx) => {
         if (await checkExit(ctx)) return;
 
-        // Retrieve stored values from our custom state.
-        const { leetcodeUsername, experienceLevel, scheduleInterval, tasksCount, leetcodeInfo } = ctx.wizard.state as RegistrationWizardState;
+        if (!ctx.message || !("text" in ctx.message)) {
+            await ctx.reply("😕 Please type a number for how many tasks you want to solve each day.");
+            return;
+        }
+
+        const tasksInput = (ctx.message as { text: string }).text.trim();
+        const tasksCount = Number(tasksInput);
+        if (!Number.isFinite(tasksCount) || tasksCount <= 0) {
+            await ctx.reply("🤔 That doesn't seem like a valid number. Please enter a positive number (>0).");
+            return;
+        }
+
+        // Save tasksCount
+        (ctx.wizard.state as RegistrationWizardState).tasksCount = tasksCount;
+        await ctx.reply(`Noted! Finalizing your registration...`);
+
+        // Now finalize registration (finalization logic from step 6)
+        const { leetcodeUsername, experienceLevel, scheduleInterval, leetcodeInfo } = ctx.wizard.state as RegistrationWizardState;
         if (!leetcodeUsername || !experienceLevel || !scheduleInterval || tasksCount === undefined) {
             await ctx.reply("😢 Oops! Something went wrong – some of your information is missing. Let's start over.");
             return ctx.scene.leave();
         }
 
-        // Validate the Telegram ID.
         const telegramId = ctx.from?.id;
         if (!telegramId) {
             await ctx.reply("😞 I couldn't identify you. Please try again later.");
             return ctx.scene.leave();
         }
 
-        // Convert the static interval to a numeric frequency.
         const frequency = scheduleInterval === "daily" ? 1 : 7;
-
-        const allSubmissions = leetcodeInfo?.submitStats.acSubmissionNum.find(item => item.difficulty = "All");
-
-        // Build the new user object. (Assuming your UserInput type has been updated to include tasksCount.)
+        const allSubmissions = leetcodeInfo?.submitStats.acSubmissionNum.find(item => item.difficulty === "All");
         const newUser: UserInput = {
             telegramId,
             telegramUsername: ctx.from.username || "",
