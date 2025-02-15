@@ -163,6 +163,8 @@ export const registrationWizard = new Scenes.WizardScene<MyContext>(
             return;
         }
 
+        await ctx.reply(`Noted!`);
+
         // Save the tasks count in our custom state.
         (ctx.wizard.state as RegistrationWizardState).tasksCount = tasksCount;
         return ctx.wizard.next();
