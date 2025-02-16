@@ -7,7 +7,7 @@ import { statsCommand } from "./commands/stats.ts";
 import { registrationWizard } from "./scenes/registration.ts";
 import { getUserLeetcodeInfo } from "../modules/leetcode.ts";
 import { User } from "../types/index.ts";
-import { Update } from "npm:telegraf/types";
+import { CallbackQuery, Update } from "npm:telegraf/types";
 
 export class LeetCodeBot {
     private bot: Telegraf;
@@ -28,6 +28,9 @@ export class LeetCodeBot {
 
         // Set up error handling
         this.setupErrorHandling();
+
+        // Setup checker
+        this.setupChecker();
     }
 
     private setupMiddleware() {
@@ -48,65 +51,27 @@ export class LeetCodeBot {
     }
 
     private registerCommands() {
-        this.bot.command('start', (ctx) => (ctx as never as Scenes.SceneContext).scene.enter('registration-wizard'));
-        this.bot.command('help', helpCommand);
+        this.bot.command('start', (ctx) => (ctx as unknown as Scenes.SceneContext).scene.enter('registration-wizard'));
 
+        // TODO add skip command
+        // TODO add reschedule logic
+
+        this.bot.command('help', helpCommand);
         this.bot.command('stats', statsCommand);
 
-        // Schedule command
-        this.bot.command('schedule', async (ctx) => {
-            const userId = ctx.from?.id;
-            if (!userId) return;
-
-            try {
-                await ctx.reply(
-                    "How often would you like to solve problems?",
-                    {
-                        reply_markup: {
-                            inline_keyboard: [
-                                [
-                                    { text: "Daily", callback_data: "schedule_1" },
-                                    { text: "Every 2 days", callback_data: "schedule_2" }
-                                ],
-                                [
-                                    { text: "Every 3 days", callback_data: "schedule_3" },
-                                    { text: "Weekly", callback_data: "schedule_7" }
-                                ]
-                            ]
-                        }
-                    }
-                );
-            } catch (error) {
-                console.error('Error in schedule command:', error);
-                await ctx.reply('Sorry, something went wrong. Please try again.');
-            }
-        });
-
         this.bot.on("callback_query", async (ctx) => {
-            const command = (ctx.callbackQuery as any).data;
-            console.log(command)
+            const command = (ctx.callbackQuery as unknown as CallbackQuery.DataQuery).data;
 
-            // Acknowledge the callback to remove the "loading" spinner.
             await ctx.answerCbQuery();
 
-            // Check if command exists, then call the appropriate command function.
             switch (command) {
                 case "/start":
-                    // await startCommand(ctx);
+                    await (ctx as never as Scenes.SceneContext).scene.enter('registration-wizard');
                     break;
                 case "/help":
                     await helpCommand(ctx);
                     break;
-                // Add more cases for each command you support.
-                // For example:
-                // case "/status":
-                //     await statusCommand(ctx);
-                //     break;
-                // case "/schedule":
-                //     await scheduleCommand(ctx);
-                //     break;
                 default:
-                    // Inform the user if the command is unknown.
                     await ctx.reply("Unknown command. Please use /help to see available commands.");
             }
         });
@@ -120,27 +85,17 @@ export class LeetCodeBot {
     }
 
     private setupChecker() {
-        const DAY = 24 * 60 * 60 * 1000;
+        const HOUR = 60 * 60 * 1000;
 
         setInterval(async () => {
-            const users = await this.userRepo.collection.find({ frequency: 1 }).toArray();
-
-            for (const user of users) {
-                await this.checkUser(user);
-            }
-        }, DAY);
-
-        setInterval(async () => {
-            const users = await this.userRepo.collection.find({ frequency: 7 }).toArray();
-
-            for (const user of users) {
-                await this.checkUser(user);
-            }
-        }, DAY);
+            const users = await this.userRepo.collection.find().toArray();
+            for (const user of users) await this.checkUser(user);
+        }, HOUR);
     }
 
     private async checkUser(user: User) {
         try {
+            if (user.nextDueDate && Date.now() < user.nextDueDate.getTime()) return;
 
             const updatedInfo = await getUserLeetcodeInfo(user.leetcodeUsername).catch(() => null);
             if (!updatedInfo) return; // Optionally handle later
@@ -178,15 +133,14 @@ export class LeetCodeBot {
                 );
             }
 
-
             await this.userRepo.update(user.telegramId, {
                 stats: {
                     totalSolved: allSubmissions.count,
                     streakCount: user.stats.streakCount + 1
                 },
-                updatedAt: new Date()
+                updatedAt: new Date(),
+                nextDueDate: new Date(Date.now() + (user.frequency * 24 * 60 * 60_000))
             })
-
         } catch (error) {
             console.error("Error during daily check:", error);
         }

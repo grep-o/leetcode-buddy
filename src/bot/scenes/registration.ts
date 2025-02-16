@@ -192,6 +192,7 @@ export const registrationWizard = new Scenes.WizardScene<MyContext>(
             frequency,
             tasksCount,
             stats: { streakCount: 0, totalSolved: allSubmissions?.count ?? 0 },
+            nextDueDate: new Date(Date.now() + (frequency * 24 * 60 * 60_000))
         };
 
         try {
