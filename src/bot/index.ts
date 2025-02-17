@@ -89,12 +89,15 @@ export class LeetCodeBot {
 
         setInterval(async () => {
             const users = await this.userRepo.collection.find().toArray();
-            for (const user of users) await this.checkUser(user);
+            for (const user of users) {
+                await this.checkUser(user);
+            }
         }, HOUR);
     }
 
     private async checkUser(user: User) {
         try {
+            console.log(`Checking for ${user.telegramId}`);
             if (user.nextDueDate && Date.now() < user.nextDueDate.getTime()) return;
 
             const updatedInfo = await getUserLeetcodeInfo(user.leetcodeUsername).catch(() => null);
