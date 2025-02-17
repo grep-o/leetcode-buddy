@@ -104,12 +104,17 @@ export class LeetCodeBot {
             const allSubmissions = updatedInfo.submitStats.acSubmissionNum.find(
                 (item: { difficulty: string }) => item.difficulty === "All"
             );
-            if (!allSubmissions) return;
+            if (!allSubmissions) {
+                console.error(`Could not find submissions for leetcodeUsername: ${user.leetcodeUsername}`);
+                return;
+            };
 
             // Compute "missing" as the difference between expected count and what the user achieved.
             // If your intended logic is that a positive "missing" means the user is behind,
             // you might compute it as:
             const missing = allSubmissions.count - (user.stats.totalSolved + user.tasksCount);
+
+            console.log(`Sending message to ${user.telegramId}`);
 
             // Send a message based on the computed value.
             if (missing > 0) {
