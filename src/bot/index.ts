@@ -127,23 +127,17 @@ export class LeetCodeBot {
       // you might compute it as:
       const missing = allSubmissions.count - (user.stats.totalSolved + user.tasksCount);
 
-      console.log(`Sending message to ${user.telegramId}`);
-
-      // Send a message based on the computed value.
+      let messageText = "";
       if (missing > 0) {
-        // User has missed some tasks.
-        await this.bot.telegram.sendMessage(
-          user.telegramId,
-          `Hey ${user.telegramUsername}, it looks like you missed ${missing} problem(s) that you were supposed to solve today. Let's get back on track and conquer those challenges! 💪`
-        );
+        messageText = `Hey ${user.telegramUsername}, it looks like you missed ${missing} problem(s) that you were supposed to solve today. Let's get back on track and conquer those challenges! 💪`;
       } else if (missing === 0) {
-        // User is exactly on track.
-        await this.bot.telegram.sendMessage(user.telegramId, `Good job ${user.telegramUsername}, you're right on track today! Keep up the great work! 👍`);
+        messageText = `Good job ${user.telegramUsername}, you're right on track today! Keep up the great work! 👍`;
       } else if (Math.abs(Math.round(missing / user.tasksCount)) >= 2) {
-        // If the user is ahead by a significant margin (using absolute value in case missing is negative),
-        // congratulate them.
-        await this.bot.telegram.sendMessage(user.telegramId, `YOU'RE A BEAST, ${user.telegramUsername}! You're crushing it and surpassing your targets! 🚀`);
+        messageText = `YOU'RE A BEAST, ${user.telegramUsername}! You're crushing it and surpassing your targets! 🚀`;
       }
+
+      console.log(`Sending message to ${user.telegramUsername}[${user.telegramId}]`);
+      await this.bot.telegram.sendMessage(user.telegramId, messageText);
 
       await this.userRepo.update(user.telegramId, {
         stats: {
