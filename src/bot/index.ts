@@ -9,7 +9,7 @@ import { getUserLeetcodeInfo } from "../modules/leetcode.ts";
 import { User } from "../types/index.ts";
 import { skipCommand } from "./commands/skip.ts";
 import * as Telegram from "npm:@telegraf/types";
-import { ONE_DAY } from "../modules/constants.ts";
+import { ONE_DAY, ONE_HOUR } from "../modules/constants.ts";
 
 export class LeetCodeBot {
   private bot: Telegraf;
@@ -97,19 +97,18 @@ export class LeetCodeBot {
   }
 
   private setupChecker() {
-    const HOUR = 60 * 60 * 1000;
-
     setInterval(async () => {
       const users = await this.userRepo.collection.find().toArray();
+      console.log(`Started checking for ${users.length} users`);
       for (const user of users) {
         await this.checkUser(user);
       }
-    }, HOUR);
+    }, ONE_HOUR / 2);
   }
 
   private async checkUser(user: User) {
     try {
-      console.log(`Checking for ${user.telegramId}`);
+      console.log(`Checking for ${user.telegramUsername}[${user.telegramId}]`);
       if (user.nextDueDate && Date.now() < user.nextDueDate.getTime()) return;
 
       const updatedInfo = await getUserLeetcodeInfo(user.leetcodeUsername).catch(() => null);

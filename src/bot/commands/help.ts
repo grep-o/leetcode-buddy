@@ -7,6 +7,7 @@ import * as Telegram from "npm:@telegraf/types";
 // task - to get relevant task
 // leaderboard - View the leaderboard
 // group - to redirect to group
+// precommit hook to do deno check before pushing
 
 export function helpCommand(ctx: Context): Promise<Telegram.Message.TextMessage> {
   const helpText = `
