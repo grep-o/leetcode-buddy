@@ -3,6 +3,7 @@ import { UserRepository } from "../../db/repositories/user.ts";
 import { ExperienceLevel, UserInput, UserState } from "../../types/index.ts";
 import { getUserLeetcodeInfo } from "../../modules/leetcode.ts";
 import { LeetcodeUserInfo } from "../../modules/types.ts";
+import { ONE_DAY } from "../../modules/constants.ts";
 
 // 1. Define an interface for your custom wizard state.
 interface RegistrationWizardState {
@@ -239,7 +240,7 @@ export const registrationWizard = new Scenes.WizardScene<MyContext>(
       frequency,
       tasksCount,
       stats: { streakCount: 0, totalSolved: allSubmissions?.count ?? 0 },
-      nextDueDate: new Date(Date.now() + frequency * 24 * 60 * 60_000),
+      nextDueDate: new Date(Date.now() + frequency * ONE_DAY),
     };
 
     try {

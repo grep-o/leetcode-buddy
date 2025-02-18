@@ -8,6 +8,8 @@ import { registrationWizard } from "./scenes/registration.ts";
 import { getUserLeetcodeInfo } from "../modules/leetcode.ts";
 import { User } from "../types/index.ts";
 import { CallbackQuery, Update } from "npm:telegraf/types";
+import { skipCommand } from "./commands/skip.ts";
+import { ONE_DAY } from "../modules/constants.ts";
 
 export class LeetCodeBot {
   private bot: Telegraf;
@@ -15,10 +17,7 @@ export class LeetCodeBot {
 
   constructor() {
     const token = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    if (!token)
-      throw Error(
-        "TELEGRAM_BOT_TOKEN is missing. Try setting in .env as `TELEGRAM_BOT_TOKEN=your_token`"
-      );
+    if (!token) throw Error("TELEGRAM_BOT_TOKEN is missing. Try setting in .env as `TELEGRAM_BOT_TOKEN=your_token`");
 
     this.bot = new Telegraf(token);
     this.userRepo = new UserRepository();
@@ -42,41 +41,39 @@ export class LeetCodeBot {
 
     // Create and use the stage middleware
     const stage = new Scenes.Stage([registrationWizard]);
-    this.bot.use(
-      stage.middleware() as never as MiddlewareFn<Context<Update>, Update>
-    );
+    this.bot.use(stage.middleware() as never as MiddlewareFn<Context<Update>, Update>);
 
     // Log middleware
     this.bot.use(async (ctx, next) => {
-      const start = Date.now();
-      await next();
-      const ms = Date.now() - start;
-      console.log(`[${ctx.updateType}] Response time: ${ms}ms`);
+      try {
+        const start = Date.now();
+        await next();
+        const ms = Date.now() - start;
+        console.log(`[${ctx.updateType}] Response time: ${ms}ms`);
+      } catch (error: unknown) {
+        return ctx.reply(`Sorry, something went wrong. Please try again later. Error - ${(error as Error).message}`);
+      }
     });
   }
 
   private registerCommands() {
-    this.bot.command("start", (ctx) =>
-      (ctx as unknown as Scenes.SceneContext).scene.enter("registration-wizard")
-    );
+    this.bot.command("start", (ctx) => (ctx as unknown as Scenes.SceneContext).scene.enter("registration-wizard"));
 
     // TODO add skip command
     // TODO add reschedule logic
 
     this.bot.command("help", helpCommand);
     this.bot.command("stats", statsCommand);
+    this.bot.command("skip", skipCommand);
 
     this.bot.on("callback_query", async (ctx) => {
-      const command = (ctx.callbackQuery as unknown as CallbackQuery.DataQuery)
-        .data;
+      const command = (ctx.callbackQuery as unknown as CallbackQuery.DataQuery).data;
 
       await ctx.answerCbQuery();
 
       switch (command) {
         case "/start":
-          await (ctx as never as Scenes.SceneContext).scene.enter(
-            "registration-wizard"
-          );
+          await (ctx as never as Scenes.SceneContext).scene.enter("registration-wizard");
           break;
         case "/help":
           await helpCommand(ctx);
@@ -85,9 +82,7 @@ export class LeetCodeBot {
           await statsCommand(ctx);
           break;
         default:
-          await ctx.reply(
-            "Unknown command. Please use /help to see available commands."
-          );
+          await ctx.reply("Unknown command. Please use /help to see available commands.");
       }
     });
   }
@@ -115,27 +110,20 @@ export class LeetCodeBot {
       console.log(`Checking for ${user.telegramId}`);
       if (user.nextDueDate && Date.now() < user.nextDueDate.getTime()) return;
 
-      const updatedInfo = await getUserLeetcodeInfo(
-        user.leetcodeUsername
-      ).catch(() => null);
+      const updatedInfo = await getUserLeetcodeInfo(user.leetcodeUsername).catch(() => null);
       if (!updatedInfo) return; // Optionally handle later
 
       // Get the overall submission stats (for "All" difficulty)
-      const allSubmissions = updatedInfo.submitStats.acSubmissionNum.find(
-        (item: { difficulty: string }) => item.difficulty === "All"
-      );
+      const allSubmissions = updatedInfo.submitStats.acSubmissionNum.find((item: { difficulty: string }) => item.difficulty === "All");
       if (!allSubmissions) {
-        console.error(
-          `Could not find submissions for leetcodeUsername: ${user.leetcodeUsername}`
-        );
+        console.error(`Could not find submissions for leetcodeUsername: ${user.leetcodeUsername}`);
         return;
       }
 
       // Compute "missing" as the difference between expected count and what the user achieved.
       // If your intended logic is that a positive "missing" means the user is behind,
       // you might compute it as:
-      const missing =
-        allSubmissions.count - (user.stats.totalSolved + user.tasksCount);
+      const missing = allSubmissions.count - (user.stats.totalSolved + user.tasksCount);
 
       console.log(`Sending message to ${user.telegramId}`);
 
@@ -148,17 +136,11 @@ export class LeetCodeBot {
         );
       } else if (missing === 0) {
         // User is exactly on track.
-        await this.bot.telegram.sendMessage(
-          user.telegramId,
-          `Good job ${user.telegramUsername}, you're right on track today! Keep up the great work! 👍`
-        );
+        await this.bot.telegram.sendMessage(user.telegramId, `Good job ${user.telegramUsername}, you're right on track today! Keep up the great work! 👍`);
       } else if (Math.abs(Math.round(missing / user.tasksCount)) >= 2) {
         // If the user is ahead by a significant margin (using absolute value in case missing is negative),
         // congratulate them.
-        await this.bot.telegram.sendMessage(
-          user.telegramId,
-          `YOU'RE A BEAST, ${user.telegramUsername}! You're crushing it and surpassing your targets! 🚀`
-        );
+        await this.bot.telegram.sendMessage(user.telegramId, `YOU'RE A BEAST, ${user.telegramUsername}! You're crushing it and surpassing your targets! 🚀`);
       }
 
       await this.userRepo.update(user.telegramId, {
@@ -167,7 +149,7 @@ export class LeetCodeBot {
           streakCount: user.stats.streakCount + 1,
         },
         updatedAt: new Date(),
-        nextDueDate: new Date(Date.now() + user.frequency * 24 * 60 * 60_000),
+        nextDueDate: new Date(Date.now() + user.frequency * ONE_DAY),
       });
     } catch (error) {
       console.error("Error during daily check:", error);
@@ -180,8 +162,7 @@ export class LeetCodeBot {
       await this.bot.launch(() => console.log("Bot is running..."));
 
       const signals = ["SIGTERM", "SIGINT"];
-      for (const signal of signals)
-        Deno.addSignalListener(signal as Deno.Signal, () => this.stop());
+      for (const signal of signals) Deno.addSignalListener(signal as Deno.Signal, () => this.stop());
     } catch (error) {
       console.error("Failed to start bot:", error);
       throw error;

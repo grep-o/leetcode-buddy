@@ -1,35 +1,37 @@
 export enum UserState {
-    // Active states
-    ACTIVE = "ACTIVE",                     // Normal active state
-    PAUSED = "PAUSED",                     // User temporarily paused notifications
+  // Active states
+  ACTIVE = "ACTIVE", // Normal active state
+  PAUSED = "PAUSED", // User temporarily paused notifications
 }
 
 export enum ExperienceLevel {
-    BEGINNER = "beginner",
-    INTERMEDIATE = "intermediate",
-    ADVANCED = "advanced"
+  BEGINNER = "beginner",
+  INTERMEDIATE = "intermediate",
+  ADVANCED = "advanced",
 }
 
 export interface User {
-    telegramId: number;
-    telegramUsername: string;
+  telegramId: number;
+  telegramUsername: string;
 
-    leetcodeUsername: string;
+  leetcodeUsername: string;
 
-    state: UserState;
-    experienceLevel: ExperienceLevel;
+  state: UserState;
+  experienceLevel: ExperienceLevel;
 
-    frequency: number;
-    tasksCount: number;
+  frequency: number;
+  tasksCount: number;
 
-    stats: {
-        streakCount: number;
-        totalSolved: number;
-    };
+  stats: {
+    streakCount: number;
+    totalSolved: number;
+  };
 
-    createdAt: Date; // Registration date
-    updatedAt: Date; // Used to update the last time leetcode stats were fetched
-    nextDueDate: Date; // The date which until which the taskCount should be updated
+  createdAt: Date; // Registration date
+  updatedAt: Date; // Used to update the last time leetcode stats were fetched
+
+  nextDueDate: Date; // The date which until which the taskCount should be updated
+  skippedCount: number;
 }
 
-export type UserInput = Omit<User, 'createdAt' | 'updatedAt'>;
+export type UserInput = Omit<User, "createdAt" | "updatedAt">;
