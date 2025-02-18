@@ -31,7 +31,7 @@ export interface User {
   updatedAt: Date; // Used to update the last time leetcode stats were fetched
 
   nextDueDate: Date; // The date which until which the taskCount should be updated
-  skippedCount: number;
+  skippedCount?: number;
 }
 
 export type UserInput = Omit<User, "createdAt" | "updatedAt">;

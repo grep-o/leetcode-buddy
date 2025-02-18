@@ -1,4 +1,6 @@
-import { Context } from "npm:telegraf";
+import { Context,  } from "npm:telegraf";
+
+import * as Telegram from "npm:@telegraf/types";
 
 // TODO add
 // schedule(change the frequency)
@@ -6,7 +8,7 @@ import { Context } from "npm:telegraf";
 // leaderboard - View the leaderboard
 // group - to redirect to group
 
-export function helpCommand(ctx: Context) {
+export function helpCommand(ctx: Context): Promise<Telegram.Message.TextMessage> {
   const helpText = `
 *LeetCode Study Bot Help*
 
@@ -24,10 +26,7 @@ _Need more assistance? Feel free to ask!_
   // Define inline keyboard buttons for quick actions.
   const keyboard = {
     inline_keyboard: [
-      [
-        { text: "Start", callback_data: "/start" },
-        { text: "Status", callback_data: "/status" },
-      ],
+      [{ text: "Start", callback_data: "/start" }],
       [
         { text: "Stats", callback_data: "/stats" },
         { text: "Skip", callback_data: "/skip" },

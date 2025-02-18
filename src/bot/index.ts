@@ -7,13 +7,20 @@ import { statsCommand } from "./commands/stats.ts";
 import { registrationWizard } from "./scenes/registration.ts";
 import { getUserLeetcodeInfo } from "../modules/leetcode.ts";
 import { User } from "../types/index.ts";
-import { CallbackQuery, Update } from "npm:telegraf/types";
 import { skipCommand } from "./commands/skip.ts";
+import * as Telegram from "npm:@telegraf/types";
 import { ONE_DAY } from "../modules/constants.ts";
 
 export class LeetCodeBot {
   private bot: Telegraf;
   private userRepo: UserRepository;
+
+  private commandHandlers: Record<string, (ctx: Scenes.SceneContext) => Promise<Telegram.Message.TextMessage> | unknown> = {
+    "/start": (ctx): Promise<Telegram.Message.TextMessage> => ctx.scene.enter("registration-wizard") as Promise<Telegram.Message.TextMessage>,
+    "/help": helpCommand,
+    "/stats": statsCommand,
+    "/skip": skipCommand,
+  };
 
   constructor() {
     const token = Deno.env.get("TELEGRAM_BOT_TOKEN");
@@ -41,9 +48,9 @@ export class LeetCodeBot {
 
     // Create and use the stage middleware
     const stage = new Scenes.Stage([registrationWizard]);
-    this.bot.use(stage.middleware() as never as MiddlewareFn<Context<Update>, Update>);
+    this.bot.use(stage.middleware() as never as MiddlewareFn<Context<Telegram.Update>, Telegram.Update>);
 
-    // Log middleware
+    // Log and catch middleware
     this.bot.use(async (ctx, next) => {
       try {
         const start = Date.now();
@@ -57,32 +64,27 @@ export class LeetCodeBot {
   }
 
   private registerCommands() {
-    this.bot.command("start", (ctx) => (ctx as unknown as Scenes.SceneContext).scene.enter("registration-wizard"));
+    // Register commands as bot.command handlers.
+    for (const command in this.commandHandlers) {
+      // Remove the leading slash when registering with bot.command,
+      // because Telegraf expects the command without it.
 
-    // TODO add skip command
-    // TODO add reschedule logic
+      const commandName = command.substring(1);
+      this.bot.command(commandName, this.commandHandlers[command] as any);
+    }
 
-    this.bot.command("help", helpCommand);
-    this.bot.command("stats", statsCommand);
-    this.bot.command("skip", skipCommand);
-
-    this.bot.on("callback_query", async (ctx) => {
-      const command = (ctx.callbackQuery as unknown as CallbackQuery.DataQuery).data;
-
+    // Also register a callback_query handler that delegates to the same mapping.
+    this.bot.on("callback_query" as any, async (ctx) => {
+      // Get the callback data
+      const command = (ctx.callbackQuery as unknown as Telegram.CallbackQuery.DataQuery).data;
       await ctx.answerCbQuery();
 
-      switch (command) {
-        case "/start":
-          await (ctx as never as Scenes.SceneContext).scene.enter("registration-wizard");
-          break;
-        case "/help":
-          await helpCommand(ctx);
-          break;
-        case "/stats":
-          await statsCommand(ctx);
-          break;
-        default:
-          await ctx.reply("Unknown command. Please use /help to see available commands.");
+      // Look up the command in our mapping.
+      const handler = this.commandHandlers[command];
+      if (handler) {
+        await handler(ctx as any);
+      } else {
+        await ctx.reply("Unknown command. Please use /help to see available commands.");
       }
     });
   }

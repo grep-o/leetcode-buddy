@@ -11,7 +11,7 @@ export async function skipCommand(ctx: Context) {
   const user = await userRepo.findByTelegramId(telegramId);
   if (!user) return ctx.reply("It seems you are not registered yet. Please use /start to begin the registration process.");
 
-  await userRepo.update(telegramId, { nextDueDate: new Date(Date.now() + user.frequency * ONE_DAY), skippedCount: user.skippedCount + 1 });
+  await userRepo.update(telegramId, { nextDueDate: new Date(Date.now() + user.frequency * ONE_DAY), skippedCount: (user.skippedCount ?? 0) + 1 });
 
   const statsMessage = `No worries! We'll skip for this time 👍`.trim();
 
