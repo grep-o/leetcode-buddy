@@ -129,7 +129,7 @@ export class LeetCodeBot {
       let messageText = "";
       if (missing > 0) {
         messageText = `Hey ${user.telegramUsername}, it looks like you missed ${missing} problem(s) that you were supposed to solve today. Let's get back on track and conquer those challenges! 💪`;
-      } else if (missing === 0) {
+      } else if (missing <= 0) {
         messageText = `Good job ${user.telegramUsername}, you're right on track today! Keep up the great work! 👍`;
       } else if (Math.abs(Math.round(missing / user.tasksCount)) >= 2) {
         messageText = `YOU'RE A BEAST, ${user.telegramUsername}! You're crushing it and surpassing your targets! 🚀`;
